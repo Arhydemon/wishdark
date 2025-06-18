@@ -1,0 +1,38 @@
+wishdark/
+│  bot.py                # create_app() + launch polling
+│  settings.py           # pydantic BaseSettings
+│  di.py                 # «контейнер» зависимостей (stores singletons)
+│
+├─ config/               # YAML/JSON фикс-данные (категории и т.п.)
+│
+├─ adapters/             # ❶ наружные интерфейсы
+│   ├─ telegram/         #   – хендлеры aiogram 3
+│   │   ├─ routers.py    #   – реестр роутеров
+│   │   └─ ...
+│   └─ schedulers/       #   – CRON/tasks (apscheduler, celery)
+│
+├─ application/          # ❷ сервисы-оркестраторы, DTO, use-cases
+│   ├─ wishes/           #   – create, list, take
+│   ├─ deals/
+│   ├─ chat/
+│   └─ users/
+│
+├─ domain/               # ❸ чистые сущности + бизнес-правила
+│   ├─ models.py         #   – User, Wish, Deal …
+│   ├─ value_objects.py  #   – Money, Rating …
+│   └─ errors.py
+│
+├─ infrastructure/       # ❹ «железо»: БД, кэш, API
+│   ├─ db/
+│   │   ├─ repo_base.py  #     – unit-of-work + conn pool
+│   │   ├─ repositories/
+│   │   │   ├─ wish.py
+│   │   │   └─ ...
+│   │   └─ migrations/   #     – Alembic (вкл. chat_enabled)
+│   └─ redis/
+│
+├─ keyboards/            # builders для inline / reply
+├─ middlewares/          # throttling, db-session, logging
+├─ utils/                # date helpers, text utils …
+└─ tests/                # pytest
+    ├─ unit/  ├─ integration/  └─ e2e/
