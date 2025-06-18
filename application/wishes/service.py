@@ -1,19 +1,25 @@
+# application/wishes/service.py
+
+from domain.models import WishStatus
 from infrastructure.db.repositories.wish import WishRepo
+from infrastructure.db.repositories.deal import DealRepo
 
 class WishService:
-    def __init__(self, repo: WishRepo):
-        self.repo = repo
+    def __init__(self, wish_repo: WishRepo, deal_repo: DealRepo = None):
+        self.wish_repo = wish_repo
+        self.deal_repo = deal_repo or DealRepo()
 
-    async def create_wish(
-        self, user_id: int, id_category: int,
-        description: str, amount, currency: str, deadline
-    ):
-        # здесь можно вставить проверки (баны, лимиты)
-        return await self.repo.create(
-            id_requester=user_id,
-            id_category=id_category,
-            description=description,
-            amount=amount,
-            currency=currency,
-            deadline=deadline
-        )
+    async def list_open_wishes(self, limit: int = 5, offset: int = 0):
+        return await self.wish_repo.list_open(limit, offset)
+
+    async def take_wish(self, wish_id: int, user_id: int):
+        wish = await self.wish_repo.get_by_id(wish_id)
+        if wish is None:
+            raise ValueError("Заявка не найдена")
+        if wish.id_requester == user_id:
+            raise ValueError("Нельзя взять свою заявку")
+        if wish.status != WishStatus.open:
+            raise ValueError("Заявка уже занята")
+        deal = await self.deal_repo.create(wish_id=wish_id, wishmaker_id=user_id)
+        await self.wish_repo.update_status(wish_id, WishStatus.taken.value)
+        return deal

@@ -2,11 +2,18 @@ from pydantic import BaseModel
 from enum import Enum
 from datetime import datetime, date
 from decimal import Decimal
+from typing import Optional
 
 class WishStatus(str, Enum):
     open      = "open"
     taken     = "taken"
     completed = "completed"
+    cancelled = "cancelled"
+
+class DealStatus(str, Enum):
+    active    = "active"
+    finished  = "finished"
+    failed    = "failed"
     cancelled = "cancelled"
 
 class Category(BaseModel):
@@ -23,3 +30,17 @@ class Wish(BaseModel):
     deadline: date
     status: WishStatus
     created_at: datetime
+
+class Deal(BaseModel):
+    id: int
+    id_wish: int
+    id_wishmaker: int
+    start_date: datetime
+    end_date: Optional[datetime]
+    status: DealStatus
+    telegram_chat_id: Optional[int]
+    chat_enabled: bool
+    new_amount: Optional[Decimal]
+    new_currency: Optional[str]
+    change_requested_by: Optional[int]
+    change_status: Optional[str]
