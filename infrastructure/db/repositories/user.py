@@ -13,11 +13,18 @@ class UserRepo:
         RETURNING *;
         """
         row = await get_conn().fetchrow(sql, telegram_id, username)
-        return User.model_validate(dict(row))
+        data = dict(row)
+        # Переименовываем id_user → id
+        data["id"] = data.pop("id_user")
+        return User.model_validate(data)
 
     async def get_by_telegram_id(self, telegram_id: int) -> User | None:
         sql = """
         SELECT * FROM public."user" WHERE telegram_id = $1;
         """
         row = await get_conn().fetchrow(sql, telegram_id)
-        return User.model_validate(dict(row)) if row else None
+        if not row:
+            return None
+        data = dict(row)
+        data["id"] = data.pop("id_user")
+        return User.model_validate(data)
