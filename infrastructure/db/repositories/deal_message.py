@@ -9,4 +9,6 @@ class DealMessageRepo:
         RETURNING *;
         """
         row = await get_conn().fetchrow(sql, deal_id, sender_id, message)
-        return DealMessage.model_validate(dict(row))
+        data = dict(row)
+        data["id"] = data.pop("id_message")
+        return DealMessage.model_validate(data)

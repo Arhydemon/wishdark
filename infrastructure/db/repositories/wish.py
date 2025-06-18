@@ -3,8 +3,7 @@
 from infrastructure.db.repo_base import get_conn
 from domain.models import Wish
 from decimal import Decimal
-from typing import List, Optional
-
+from typing import List
 
 class WishRepo:
     async def create(
@@ -33,18 +32,21 @@ class WishRepo:
             currency,
             deadline,
         )
-        return Wish.model_validate(dict(row))
+        data = dict(row)
+        # Переименовываем автоинкрементное поле
+        data["id"] = data.pop("id_wish")
+        return Wish.model_validate(data)
 
-    async def get_by_id(self, wish_id: int) -> Optional[Wish]:
+    async def get_by_id(self, wish_id: int) -> Wish | None:
         sql = "SELECT * FROM public.wish WHERE id_wish = $1;"
         row = await get_conn().fetchrow(sql, wish_id)
-        return Wish.model_validate(dict(row)) if row else None
+        if not row:
+            return None
+        data = dict(row)
+        data["id"] = data.pop("id_wish")
+        return Wish.model_validate(data)
 
-    async def list_open(
-        self,
-        limit: int = 5,
-        offset: int = 0
-    ) -> List[Wish]:
+    async def list_open(self, limit: int, offset: int) -> List[Wish]:
         sql = """
         SELECT * FROM public.wish
         WHERE status = 'open'
@@ -52,12 +54,13 @@ class WishRepo:
         LIMIT $1 OFFSET $2;
         """
         rows = await get_conn().fetch(sql, limit, offset)
-        return [Wish.model_validate(dict(r)) for r in rows]
+        result = []
+        for row in rows:
+            data = dict(row)
+            data["id"] = data.pop("id_wish")
+            result.append(Wish.model_validate(data))
+        return result
 
-    async def update_status(
-        self,
-        wish_id: int,
-        new_status: str
-    ) -> None:
-        sql = "UPDATE public.wish SET status = $2 WHERE id_wish = $1;"
-        await get_conn().execute(sql, wish_id, new_status)
+    async def update_status(self, wish_id: int, status: str) -> None:
+        sql = "UPDATE public.wish SET status = $1 WHERE id_wish = $2;"
+        await get_conn().execute(sql, status, wish_id)
