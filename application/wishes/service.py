@@ -3,6 +3,7 @@
 from domain.models import WishStatus
 from infrastructure.db.repositories.wish import WishRepo
 from infrastructure.db.repositories.deal import DealRepo
+from infrastructure.db.repositories.wish_question import WishQuestionRepo
 
 class WishService:
     def __init__(self, wish_repo: WishRepo, deal_repo: DealRepo = None):
@@ -11,6 +12,16 @@ class WishService:
 
     async def list_open_wishes(self, limit: int = 5, offset: int = 0):
         return await self.wish_repo.list_open(limit, offset)
+
+    async def ask_question(self, wish_id: int, sender_id: int,
+                           receiver_id: int, question: str):
+        # тут можно проверить, что wish.status == open
+        return await WishQuestionRepo().create(
+            wish_id=wish_id,
+            sender_id=sender_id,
+            receiver_id=receiver_id,
+            question=question
+        )
 
     async def take_wish(self, wish_id: int, user_id: int):
         wish = await self.wish_repo.get_by_id(wish_id)

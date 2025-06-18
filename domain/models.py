@@ -4,6 +4,16 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional
 
+
+class WishQuestion(BaseModel):
+    id: int
+    id_wish: int
+    sender_id: int
+    receiver_id: int
+    question: str
+    answer: str | None = None
+    created_at: datetime
+
 class WishStatus(str, Enum):
     open      = "open"
     taken     = "taken"
