@@ -7,7 +7,6 @@ from aiogram.client.bot import DefaultBotProperties
 from settings import settings
 from di import Container
 from infrastructure.db.repo_base import DBSessionMiddleware
-from adapters.telegram.common import router as common_router
 from adapters.telegram.routers import register_routers
 
 async def main():
@@ -26,9 +25,8 @@ async def main():
     dp.message.middleware(DBSessionMiddleware(pool))
     dp.callback_query.middleware(DBSessionMiddleware(pool))
 
-    # 4) Регистрируем роутеры
-    dp.include_router(common_router)   # /start, Главное меню
-    register_routers(dp)               # wishes.create, wishes.list, ...
+    # 4) Регистрируем все роутеры (common, wishes.create, wishes.list, deals.chat…)
+    register_routers(dp)
 
     # 5) Старт polling
     await dp.start_polling(bot)

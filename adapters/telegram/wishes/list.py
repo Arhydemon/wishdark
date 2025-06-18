@@ -15,31 +15,21 @@ router = Router()
 
 @router.message(lambda m: m.text == "🔍 Открытые")
 async def cmd_list_open(msg: Message, state: FSMContext):
-    # Сброс FSM (на случай, если была форма)
     await state.clear()
     svc = WishService(WishRepo())
     wishes = await svc.list_open_wishes(limit=5, offset=0)
-    await msg.answer(
-        "Открытые заявки:",
-        reply_markup=build_wish_list(wishes, page=0)
-    )
+    await msg.answer("Открытые заявки:", reply_markup=build_wish_list(wishes, page=0))
 
 @router.callback_query(lambda c: c.data and c.data.startswith("wish:list:"))
 async def cb_list_page(cq: CallbackQuery):
     _, _, page_str = cq.data.split(":")
-    page = int(page_str)
-    svc = WishService(WishRepo())
-    wishes = await svc.list_open_wishes(limit=5, offset=page * 5)
-    await cq.message.edit_text(
-        "Открытые заявки:",
-        reply_markup=build_wish_list(wishes, page=page)
-    )
+    wishes = await WishService(WishRepo()).list_open_wishes(limit=5, offset=int(page_str)*5)
+    await cq.message.edit_text("Открытые заявки:", reply_markup=build_wish_list(wishes, page=int(page_str)))
     await cq.answer()
 
 @router.callback_query(lambda c: c.data and c.data.startswith("wish:show:"))
 async def cb_show_wish(cq: CallbackQuery):
-    _, _, wid_str = cq.data.split(":")
-    wish_id = int(wid_str)
+    wish_id = int(cq.data.split(":")[2])
     wish = await WishService(WishRepo()).wish_repo.get_by_id(wish_id)
 
     text = (
@@ -50,47 +40,34 @@ async def cb_show_wish(cq: CallbackQuery):
         f"⏳ {wish.deadline}\n"
         f"Автор: {wish.id_requester}"
     )
-
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🛠 Взять заявку",        callback_data=f"wish:take:{wish.id}")
-    builder.button(text="⬅️ Назад к списку",    callback_data="wish:list:0")
-    builder.button(text="❓ Задать вопрос",      callback_data=f"wish:ask:{wish.id}")
-    builder.adjust(2, 1)  # две кнопки в первом ряду, одна во втором
-
-    await cq.message.edit_text(text, reply_markup=builder.as_markup())
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🛠 Взять заявку", callback_data=f"wish:take:{wish.id}")
+    kb.button(text="⬅️ Назад",       callback_data="wish:list:0")
+    kb.button(text="❓ Вопрос",       callback_data=f"wish:ask:{wish.id}")
+    kb.adjust(2, 1)
+    await cq.message.edit_text(text, reply_markup=kb.as_markup())
     await cq.answer()
 
 @router.callback_query(lambda c: c.data and c.data.startswith("wish:take:"))
 async def cb_take_wish(cq: CallbackQuery):
-    # 1) upsert пользователя по telegram_id → получаем internal id
+    # регистрируем/обновляем user и берём внутренний id
     user = await UserRepo().upsert(
         telegram_id=cq.from_user.id,
         username=cq.from_user.username or ""
     )
-
-    # 2) вытаскиваем wish_id
-    _, _, wid_str = cq.data.split(":")
-    wish_id = int(wid_str)
-
-    svc = WishService(WishRepo())
+    wish_id = int(cq.data.split(":")[2])
     try:
-        # 3) передаем internal user.id
-        deal = await svc.take_wish(wish_id, user.id)
+        deal = await WishService(WishRepo()).take_wish(wish_id, user.id)
     except Exception as e:
         return await cq.answer(str(e), show_alert=True)
 
-    # 4) формируем сообщение с кнопкой чата
     text = (
         f"✅ Заявка #{wish_id} взята!\n"
         f"ID сделки: {deal.id}\n\n"
         "Нажмите «💬 Открыть чат», чтобы начать общение."
     )
-    builder = InlineKeyboardBuilder()
-    builder.button(
-        text="💬 Открыть чат",
-        callback_data=f"deal:chat:{deal.id}"
-    )
-    builder.adjust(1)
-
-    await cq.message.edit_text(text, reply_markup=builder.as_markup())
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💬 Открыть чат", callback_data=f"deal:chat:{deal.id}")
+    kb.adjust(1)
+    await cq.message.edit_text(text, reply_markup=kb.as_markup())
     await cq.answer()
