@@ -67,14 +67,24 @@ async def cb_take_wish(cq: CallbackQuery):
     svc = WishService(WishRepo())
 
     try:
-        await svc.take_wish(wish_id, cq.from_user.id)
+        # создаём сделку и меняем статус
+        deal = await svc.take_wish(wish_id, cq.from_user.id)
     except Exception as e:
-        # Если есть ошибка (своя заявка или уже занята)
-        await cq.answer(str(e), show_alert=True)
-        return
+        return await cq.answer(str(e), show_alert=True)
 
-    await cq.message.edit_text(
-        "✅ Заявка взята! Можешь открыть чат по сделке.",
-        reply_markup=main_kb
+    # Формируем текст и клавиатуру с кнопкой чата
+    text = (
+        f"✅ Заявка #{wish_id} взята!\n"
+        f"ID сделки: {deal.id}\n\n"
+        "Нажмите «💬 Открыть чат», чтобы начать общение."
     )
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="💬 Открыть чат",
+        callback_data=f"deal:chat:{deal.id}"
+    )
+    builder.adjust(1)  # одна кнопка в ряду
+
+    # Редактируем предыдущее сообщение
+    await cq.message.edit_text(text, reply_markup=builder.as_markup())
     await cq.answer()

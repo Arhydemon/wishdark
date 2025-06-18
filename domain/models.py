@@ -5,6 +5,13 @@ from decimal import Decimal
 from typing import Optional
 
 
+class DealMessage(BaseModel):
+    id: int
+    id_deal: int
+    sender_id: int
+    message: str
+    sent_at: datetime
+
 class WishQuestion(BaseModel):
     id: int
     id_wish: int
