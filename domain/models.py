@@ -4,12 +4,14 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional, List
 
-class DealMessage(BaseModel):
-    id: int
-    id_deal: int
-    sender_id: int
-    message: str
-    sent_at: datetime
+class User(BaseModel):
+    id: int               # внутр. PK
+    telegram_id: int
+    username: str
+    karma_level: int
+    account_status: str
+    created_at: datetime
+    preferred_categories: List[int]
 
 class User(BaseModel):
     id: int

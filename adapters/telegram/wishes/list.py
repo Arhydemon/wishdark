@@ -7,6 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from application.wishes.service import WishService
 from infrastructure.db.repositories.wish import WishRepo
+from infrastructure.db.repositories.user import UserRepo
 from keyboards.reply import main_kb
 from keyboards.inline_wishes import build_wish_list
 
@@ -14,7 +15,7 @@ router = Router()
 
 @router.message(lambda m: m.text == "🔍 Открытые")
 async def cmd_list_open(msg: Message, state: FSMContext):
-    # Сбрасываем FSM (если был запущен)
+    # Сброс FSM (на случай, если была форма)
     await state.clear()
     svc = WishService(WishRepo())
     wishes = await svc.list_open_wishes(limit=5, offset=0)
@@ -54,25 +55,31 @@ async def cb_show_wish(cq: CallbackQuery):
     builder.button(text="🛠 Взять заявку",        callback_data=f"wish:take:{wish.id}")
     builder.button(text="⬅️ Назад к списку",    callback_data="wish:list:0")
     builder.button(text="❓ Задать вопрос",      callback_data=f"wish:ask:{wish.id}")
-    # Две кнопки в первом ряду и одна во втором
-    builder.adjust(2, 1)
+    builder.adjust(2, 1)  # две кнопки в первом ряду, одна во втором
 
     await cq.message.edit_text(text, reply_markup=builder.as_markup())
     await cq.answer()
 
 @router.callback_query(lambda c: c.data and c.data.startswith("wish:take:"))
 async def cb_take_wish(cq: CallbackQuery):
+    # 1) upsert пользователя по telegram_id → получаем internal id
+    user = await UserRepo().upsert(
+        telegram_id=cq.from_user.id,
+        username=cq.from_user.username or ""
+    )
+
+    # 2) вытаскиваем wish_id
     _, _, wid_str = cq.data.split(":")
     wish_id = int(wid_str)
-    svc = WishService(WishRepo())
 
+    svc = WishService(WishRepo())
     try:
-        # создаём сделку и меняем статус
-        deal = await svc.take_wish(wish_id, cq.from_user.id)
+        # 3) передаем internal user.id
+        deal = await svc.take_wish(wish_id, user.id)
     except Exception as e:
         return await cq.answer(str(e), show_alert=True)
 
-    # Формируем текст и клавиатуру с кнопкой чата
+    # 4) формируем сообщение с кнопкой чата
     text = (
         f"✅ Заявка #{wish_id} взята!\n"
         f"ID сделки: {deal.id}\n\n"
@@ -83,8 +90,7 @@ async def cb_take_wish(cq: CallbackQuery):
         text="💬 Открыть чат",
         callback_data=f"deal:chat:{deal.id}"
     )
-    builder.adjust(1)  # одна кнопка в ряду
+    builder.adjust(1)
 
-    # Редактируем предыдущее сообщение
     await cq.message.edit_text(text, reply_markup=builder.as_markup())
     await cq.answer()
