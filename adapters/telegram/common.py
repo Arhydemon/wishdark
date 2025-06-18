@@ -1,27 +1,24 @@
+# adapters/telegram/common.py
+
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
-from keyboards.reply import main_kb, wishes_kb
+
+from infrastructure.db.repositories.user import UserRepo
+from keyboards.reply import main_kb
 
 router = Router()
 
 @router.message(Command("start"))
 async def start_cmd(msg: Message):
+    # 1) Убеждаемся, что пользователь есть в БД
+    await UserRepo().upsert(
+        telegram_id=msg.from_user.id,
+        username=msg.from_user.username or ""
+    )
+
+    # 2) Отправляем приветствие
     await msg.answer(
         "Привет! Добро пожаловать в WishDark.",
-        reply_markup=main_kb
-    )
-
-@router.message(lambda m: m.text == "📂 Заявки")
-async def open_wishes_menu(msg: Message):
-    await msg.answer(
-        "Выбери раздел заявок:",
-        reply_markup=wishes_kb
-    )
-
-@router.message(lambda m: m.text == "⬅️ Назад")
-async def back_to_main(msg: Message):
-    await msg.answer(
-        "Главное меню:",
         reply_markup=main_kb
     )

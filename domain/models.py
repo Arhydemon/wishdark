@@ -2,8 +2,17 @@ from pydantic import BaseModel
 from enum import Enum
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 
+
+class User(BaseModel):
+    id: int
+    telegram_id: int
+    username: Optional[str]
+    karma_level: int
+    account_status: str
+    created_at: datetime
+    preferred_categories: List[int] = []
 
 class DealMessage(BaseModel):
     id: int
